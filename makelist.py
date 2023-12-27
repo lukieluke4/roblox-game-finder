@@ -6,7 +6,7 @@ import random
 import time
 import pickle
 
-robloxapi.setCookie(input("Paste in cookie here: "))
+robloxapi.setCookie(input("gimme cookie lol: "))
 
 # number of games to grab at a time. techincally the total is infinite
 MAX_GAMES_TOTAL = 1000
@@ -59,57 +59,61 @@ player_list = [856356, 31969401, 221844, 499749, 554744114, 614603, 1221485, 608
 count = 0
 
 while True:
-    print(player_list)
-    while len(games) < MAX_GAMES_TOTAL:
-        try:
-            print("currently looking at:")
-            print(len(games))
-            current_plr = player_list[random.randrange(0, len(player_list))]
-            current_favs = robloxapi.getUserFavorites(current_plr)
+    try:
+        print(player_list)
+        while len(games) < MAX_GAMES_TOTAL:
+            try:
+                print("currently looking at:")
+                print(len(games))
+                current_plr = player_list[random.randrange(0, len(player_list))]
+                current_favs = robloxapi.getUserFavorites(current_plr)
 
-            new_creators = robloxapi.gameListToCreatorList(current_favs)    
+                new_creators = robloxapi.gameListToCreatorList(current_favs)    
+                
+                friends = robloxapi.getFriends(current_plr, MAX_FRIENDS)
+
+                player_list = list(set(player_list + new_creators + friends))
+                games = games + current_favs + robloxapi.getUserCreated(current_plr)
+
+            except BaseException as e:
+                print("probably timed out")
+                print(e)
+                time.sleep(3)
             
-            friends = robloxapi.getFriends(current_plr, MAX_FRIENDS)
+        while len(games) > 0:
+            games = list(set(games))
+            for i in range(len(games)//MAX_GAMES_BATCH + 1):
+                print(i, " / ", (len(games) // MAX_GAMES_BATCH) + 1, "games searching")
+                partial_games = games[MAX_GAMES_BATCH * i: MAX_GAMES_BATCH * i + MAX_GAMES_BATCH]
+                count = count + 1
+            
+                gameData = robloxapi.multiUniverseToList(partial_games)
+                if gameData == -1: continue # if game is unplayable, don't add it to the list
 
-            player_list = list(set(player_list + new_creators + friends))
-            games = games + current_favs + robloxapi.getUserCreated(current_plr)
+                df2 = pd.DataFrame(gameData, columns=df.columns)
+                df = pd.concat([df, df2])
 
-        except BaseException as e:
-            print("probably timed out")
-            print(e)
-            time.sleep(3)
-        
-    while len(games) > 0:
-        games = [4883092215] + list(set(games))
-        for i in range(len(games)//MAX_GAMES_BATCH + 1):
-            print(i, " / ", (len(games) // MAX_GAMES_BATCH) + 1, "games searching")
-            partial_games = games[MAX_GAMES_BATCH * i: MAX_GAMES_BATCH * i + MAX_GAMES_BATCH]
-            count = count + 1
-        
-            gameData = robloxapi.multiUniverseToList(partial_games)
-            if gameData == -1: continue # if game is unplayable, don't add it to the list
+            games = []
 
-            df2 = pd.DataFrame(gameData, columns=df.columns)
-            df = pd.concat([df, df2])
+            new_plr = []
+            for plr in range(10):
+                new_plr = new_plr + [player_list[random.randrange(0, len(player_list))]]
+            player_list = new_plr
 
-        games = []
+            df = df.drop_duplicates(subset=["UniverseID"], keep='last')
 
-        new_plr = []
-        for plr in range(10):
-            new_plr = new_plr + [player_list[random.randrange(0, len(player_list))]]
-        player_list = new_plr
+            df.to_pickle("test.pkl")
 
-        df = df.drop_duplicates(subset=["UniverseID"], keep='last')
+            print("\n\n\n\n\n---------")
+            print("\nBATCH DONE!\n")
+            print("Current game count:", len(df.index))
+            print("New games:", len(df.index) - last_count)
+            last_count = len(df.index)
 
-        df.to_pickle("test.pkl")
+            print("Time taken:", int(time.time() - last_time), "seconds")
+            last_time = time.time()
 
-        print("\n\n\n\n\n---------")
-        print("\nBATCH DONE!\n")
-        print("Current game count:", len(df.index))
-        print("New games:", len(df.index) - last_count)
-        last_count = len(df.index)
-
-        print("Time taken:", int(time.time() - last_time), "seconds")
-        last_time = time.time()
-
-        print("\n---------")
+            print("\n---------")
+    except:
+        print("frick")
+        time.sleep(30)

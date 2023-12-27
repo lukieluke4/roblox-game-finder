@@ -33,19 +33,16 @@ def getPlaceDetails(placeID):
     return api_session.get("https://games.roblox.com/v1/games/multiget-place-details?placeIds=" + str(placeID)).json()[0]
 
 def multiGetPlaceDetails(placeList):
+    print("place len (1)", len(placeList))
     place_str = "placeIds=" + str(placeList[0])
     placeList = placeList[1:]
+    print("place len (2)", len(placeList))
+    result = []
 
-    for place in range(49):
-        if place > len(placeList) - 1: break
-        place_str = place_str + "&placeIds=" + str(placeList[place])
-    placeList = placeList[49:]
-    request = api_session.get("https://games.roblox.com/v1/games/multiget-place-details?" + place_str)
+    for place in placeList:
+        place_str = place_str + "&placeIds=" + str(place)
 
-    if len(placeList) > 0:
-        return [request.json()] + [multiGetPlaceDetails(placeList)]
-
-    return request.json()
+    return api_session.get("https://games.roblox.com/v1/games/multiget-place-details?" + place_str).json()
 
 def getUniverseDetails(uniID):
     return api_session.get("https://games.roblox.com/v1/games?universeIds=" + str(uniID)).json()['data'][0]
@@ -95,16 +92,13 @@ def multiGetAgeRating(uniList):
         except:
             result = result + [0]
 
-    print(result)
     return result
     
 def multiGetVoiceEnabled(uniList):
     result = []
     for uniID in uniList:
         try:
-            print("https://voice.roblox.com/v1/settings/verify/show-age-verification-overlay/" + str(uniID))
             tmp = api_session.post("https://voice.roblox.com/v1/settings/verify/show-age-verification-overlay/" + str(uniID)).json()
-            print(tmp)
             result = result + [tmp["universePlaceVoiceEnabledSettings"]["isUniverseEnabledForVoice"]]
         except:
             result = result + [False]
@@ -124,7 +118,7 @@ def multiGetIcons(uniList, size=150):
     for i in uniList:
         uni_str = uni_str + str(i) + ","
     uni_str = uni_str[:-1]
-    #print(f"https://thumbnails.roblox.com/v1/games/icons?universeIds={uni_str}&returnPolicy=PlaceHolder&size={size}x{size}&format=Jpeg&isCircular=false")
+    #rint(f"https://thumbnails.roblox.com/v1/games/icons?universeIds={uni_str}&returnPolicy=PlaceHolder&size={size}x{size}&format=Jpeg&isCircular=false")
     result = api_session.get(f"https://thumbnails.roblox.com/v1/games/icons?universeIds={uni_str}&returnPolicy=PlaceHolder&size={size}x{size}&format=Jpeg&isCircular=false").json()
     result = result["data"]
     for i in result:
@@ -179,8 +173,7 @@ def multiUniverseToList(uniList):
     details = multiGetUniverseDetails(uniList)
     votes = multiGetUniverseVotes(uniList)
     is_custom_icon = multiGetIsCustomIcon(uniList)
-    #voice_enabled = multiGetVoiceEnabled(uniList)
-    #print(voice_enabled)
+
     age_rating = multiGetAgeRating(uniList)
 
     placelist = []
@@ -189,71 +182,77 @@ def multiUniverseToList(uniList):
         placelist = placelist + [uni["rootPlaceId"]]
 
     root_details = multiGetPlaceDetails(placelist)
-    print(root_details)
+    
     for i in range(len(uniList)):
-        if not root_details[i]["isPlayable"]: continue
-        result = {}
-        # UniverseID
-        result["UniverseID"] = uniList[i]
-        # Avatartype
-        result["AvatarType"] = details[i]["universeAvatarType"]
-        # CreatorID
-        result["CreatorID"] = details[i]["creator"]["id"]
-        # CreatorName
-        result["CreatorName"] = details[i]["creator"]["name"]
-        # CreatorType
-        result["CreatorType"] = details[i]["creator"]["type"]
-        # DateCreated
-        result["DateCreated"] = details[i]["created"]
-        # Desc
-        result["Desc"] = details[i]["sourceDescription"]
-        # Dislikes
         try:
-            result["Dislikes"] = votes[i]["downVotes"]
+            print("len: ", len(root_details))
+            print("index: ", i)
+            print(root_details[i]["isPlayable"])
+            if not root_details[i]["isPlayable"]: continue
+            result = {}
+            # UniverseID
+            result["UniverseID"] = uniList[i]
+            # Avatartype
+            result["AvatarType"] = details[i]["universeAvatarType"]
+            # CreatorID
+            result["CreatorID"] = details[i]["creator"]["id"]
+            # CreatorName
+            result["CreatorName"] = details[i]["creator"]["name"]
+            # CreatorType
+            result["CreatorType"] = details[i]["creator"]["type"]
+            # DateCreated
+            result["DateCreated"] = details[i]["created"]
+            # Desc
+            result["Desc"] = details[i]["sourceDescription"]
+            # Dislikes
+            try:
+                result["Dislikes"] = votes[i]["downVotes"]
 
-        except:
-            result["Dislikes"] = -1
+            except:
+                result["Dislikes"] = -1
 
-        # Favorites
-        result["Favorites"] = details[i]["favoritedCount"]
-        # HasVipServers
-        result["HasVipServers"] = details[i]["createVipServersAllowed"]
-        # IsPlayable
-        result["isPlayable"] = root_details[i]["isPlayable"]
-        # LastUpdated
-        result["LastUpdated"] = details[i]["updated"]
-        # LikeRatio
-        try:
-            result["LikeRatio"] = votes[i]["upVotes"] / (votes[i]["upVotes"] + votes[i]["downVotes"])
-        except:
-            result["LikeRatio"] = -1
-        # Likes
-        try:
-            result["Likes"] = votes[i]["upVotes"]
-        except:
-            result["Likes"] = -1
-        # MaxPlayers
-        result["MaxPlayers"] = details[i]["maxPlayers"]
-        # Price
-        try:
-            result["Price"] = int(details[i]["price"])
-        except:
-            result["Price"] = 0
-        
-        # RootPlaceID
-        result["RootPlaceID"] = details[i]["rootPlaceId"]
-        # Title
-        result["Title"] = details[i]["sourceName"]
-        # Uncopylocked
-        result["Uncopylocked"] = details[i]["copyingAllowed"]
-        # Visits
-        result["Visits"] = details[i]["visits"]
+            # Favorites
+            result["Favorites"] = details[i]["favoritedCount"]
+            # HasVipServers
+            result["HasVipServers"] = details[i]["createVipServersAllowed"]
+            # IsPlayable
+            result["isPlayable"] = root_details[i]["isPlayable"]
+            # LastUpdated
+            result["LastUpdated"] = details[i]["updated"]
+            # LikeRatio
+            try:
+                result["LikeRatio"] = votes[i]["upVotes"] / (votes[i]["upVotes"] + votes[i]["downVotes"])
+            except:
+                result["LikeRatio"] = -1
+            # Likes
+            try:
+                result["Likes"] = votes[i]["upVotes"]
+            except:
+                result["Likes"] = -1
+            # MaxPlayers
+            result["MaxPlayers"] = details[i]["maxPlayers"]
+            # Price
+            try:
+                result["Price"] = int(details[i]["price"])
+            except:
+                result["Price"] = 0
+            
+            # RootPlaceID
+            result["RootPlaceID"] = details[i]["rootPlaceId"]
+            # Title
+            result["Title"] = details[i]["sourceName"]
+            # Uncopylocked
+            result["Uncopylocked"] = details[i]["copyingAllowed"]
+            # Visits
+            result["Visits"] = details[i]["visits"]
 
-        #result["AgeRating"] = age_rating[i]
-        #result["VoiceEnabled"] = voice_enabled[i]
-        result["HasCustomIcon"] = is_custom_icon[i]
+            #result["AgeRating"] = age_rating[i]
+            #result["VoiceEnabled"] = voice_enabled[i]
+            result["HasCustomIcon"] = is_custom_icon[i]
 
-        final_result = final_result + [result]
+            final_result = final_result + [result]
+        except BaseException as e:
+            print(e)
     return final_result
 
 def getUserFavorites(userID):
