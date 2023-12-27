@@ -9,7 +9,7 @@ import pickle
 robloxapi.setCookie(input("gimme cookie lol: "))
 
 # number of games to grab at a time. techincally the total is infinite
-MAX_GAMES_TOTAL = 1000
+MAX_GAMES_TOTAL = 300
 
 # number of games to process at a time, don't exceed 100 probably
 MAX_GAMES_BATCH = 100 
@@ -114,6 +114,7 @@ while True:
             last_time = time.time()
 
             print("\n---------")
-    except:
+    except BaseException as e:
         print("frick")
+        print(e)
         time.sleep(30)
