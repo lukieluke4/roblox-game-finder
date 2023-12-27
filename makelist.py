@@ -9,7 +9,7 @@ import pickle
 robloxapi.setCookie(input("Paste in cookie here: "))
 
 # number of games to grab at a time. techincally the total is infinite
-MAX_GAMES_TOTAL = 25
+MAX_GAMES_TOTAL = 1000
 
 # number of games to process at a time, don't exceed 100 probably
 MAX_GAMES_BATCH = 100 
