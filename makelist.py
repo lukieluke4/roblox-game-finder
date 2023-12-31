@@ -9,7 +9,7 @@ import pickle
 robloxapi.setCookie(input("gimme cookie lol: "))
 
 # number of games to grab at a time. techincally the total is infinite
-MAX_GAMES_TOTAL = 100
+MAX_GAMES_TOTAL = 500
 
 # number of games to process at a time, don't exceed 100 probably
 MAX_GAMES_BATCH = 100
@@ -63,8 +63,7 @@ while True:
         print(player_list)
         while len(games) < MAX_GAMES_TOTAL:
             try:
-                print("currently looking at:")
-                print(len(games))
+                print("batch game count:", len(games))
                 current_plr = player_list[random.randrange(0, len(player_list))]
                 current_favs = robloxapi.getUserFavorites(current_plr)
 
@@ -76,9 +75,7 @@ while True:
                 games = games + current_favs + robloxapi.getUserCreated(current_plr)
 
             except BaseException as e:
-                print("probably timed out")
-                print(e)
-                time.sleep(3)
+                time.sleep(1)
             
         while len(games) > 0:
             games = list(set(games))
@@ -93,27 +90,27 @@ while True:
                 df2 = pd.DataFrame(gameData, columns=df.columns)
                 df = pd.concat([df, df2])
 
-            games = []
+        games = []
 
-            new_plr = []
-            for plr in range(10):
-                new_plr = new_plr + [player_list[random.randrange(0, len(player_list))]]
-            player_list = new_plr
+        new_plr = []
+        for plr in range(10):
+            new_plr = new_plr + [player_list[random.randrange(0, len(player_list))]]
+        player_list = new_plr
 
-            df = df.drop_duplicates(subset=["UniverseID"], keep='last')
+        df = df.drop_duplicates(subset=["UniverseID"], keep='last')
 
-            df.to_pickle("test.pkl")
+        df.to_pickle("test.pkl")
 
-            print("\n\n\n\n\n---------")
-            print("\nBATCH DONE!\n")
-            print("Current game count:", len(df.index))
-            print("New games:", len(df.index) - last_count)
-            last_count = len(df.index)
+        print("\n\n\n\n\n---------")
+        print("\nBATCH DONE!\n")
+        print("Current game count:", len(df.index))
+        print("New games:", len(df.index) - last_count)
+        last_count = len(df.index)
 
-            print("Time taken:", int(time.time() - last_time), "seconds")
-            last_time = time.time()
+        print("Time taken:", int(time.time() - last_time), "seconds")
+        last_time = time.time()
 
-            print("\n---------")
+        print("\n---------")
     except BaseException as e:
         print("frick")
         print(e)
