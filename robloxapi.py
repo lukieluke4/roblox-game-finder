@@ -33,16 +33,20 @@ def getPlaceDetails(placeID):
     return api_session.get("https://games.roblox.com/v1/games/multiget-place-details?placeIds=" + str(placeID)).json()[0]
 
 def multiGetPlaceDetails(placeList):
-    print("place len (1)", len(placeList))
-    place_str = "placeIds=" + str(placeList[0])
-    placeList = placeList[1:]
-    print("place len (2)", len(placeList))
+    place_strs = []
     result = []
 
-    for place in placeList:
-        place_str = place_str + "&placeIds=" + str(place)
+    # max 20 per request
+    for i in range(len(placeList)):
+        if (i % 20 == 0):
+            place_strs = place_strs + ["https://games.roblox.com/v1/games/multiget-place-details?"]
+        place_strs[-1] = place_strs[-1] + "&placeIds=" + str(placeList[i])
 
-    return api_session.get("https://games.roblox.com/v1/games/multiget-place-details?" + place_str).json()
+    for place_str in place_strs:
+        result = result + api_session.get(place_str).json()
+
+
+    return result
 
 def getUniverseDetails(uniID):
     return api_session.get("https://games.roblox.com/v1/games?universeIds=" + str(uniID)).json()['data'][0]
@@ -112,8 +116,9 @@ def getImage(url):
 
 def multiGetIcons(uniList, size=150):
     uni_str = ''
-    parsed = []
+    parsed = [[]]
     result = []
+    imgs = []
 
     for i in uniList:
         uni_str = uni_str + str(i) + ","
@@ -121,11 +126,14 @@ def multiGetIcons(uniList, size=150):
     #rint(f"https://thumbnails.roblox.com/v1/games/icons?universeIds={uni_str}&returnPolicy=PlaceHolder&size={size}x{size}&format=Jpeg&isCircular=false")
     result = api_session.get(f"https://thumbnails.roblox.com/v1/games/icons?universeIds={uni_str}&returnPolicy=PlaceHolder&size={size}x{size}&format=Jpeg&isCircular=false").json()
     result = result["data"]
-    for i in result:
-        parsed = parsed + [i["imageUrl"]]
-    
-    pool = ThreadPool(len(uniList))
-    imgs = pool.map(getImage, parsed)
+    for i in result: # dont get more than 10 at the same time, avoids rate limiting
+        if len(parsed[-1]) > 10:
+            parsed = parsed + []
+        parsed[-1] = parsed[-1] + [i["imageUrl"]]
+
+    for urls in parsed:
+        pool = ThreadPool(len(urls))
+        imgs = imgs + pool.map(getImage, urls)
 
     pool.close()
     pool.join()
@@ -184,75 +192,73 @@ def multiUniverseToList(uniList):
     root_details = multiGetPlaceDetails(placelist)
     
     for i in range(len(uniList)):
+        #try:
+        
+        if not root_details[i]["isPlayable"]: continue
+        result = {}
+        # UniverseID
+        result["UniverseID"] = uniList[i]
+        # Avatartype
+        result["AvatarType"] = details[i]["universeAvatarType"]
+        # CreatorID
+        result["CreatorID"] = details[i]["creator"]["id"]
+        # CreatorName
+        result["CreatorName"] = details[i]["creator"]["name"]
+        # CreatorType
+        result["CreatorType"] = details[i]["creator"]["type"]
+        # DateCreated
+        result["DateCreated"] = details[i]["created"]
+        # Desc
+        result["Desc"] = details[i]["sourceDescription"]
+        # Dislikes
         try:
-            print("len: ", len(root_details))
-            print("index: ", i)
-            print(root_details[i]["isPlayable"])
-            if not root_details[i]["isPlayable"]: continue
-            result = {}
-            # UniverseID
-            result["UniverseID"] = uniList[i]
-            # Avatartype
-            result["AvatarType"] = details[i]["universeAvatarType"]
-            # CreatorID
-            result["CreatorID"] = details[i]["creator"]["id"]
-            # CreatorName
-            result["CreatorName"] = details[i]["creator"]["name"]
-            # CreatorType
-            result["CreatorType"] = details[i]["creator"]["type"]
-            # DateCreated
-            result["DateCreated"] = details[i]["created"]
-            # Desc
-            result["Desc"] = details[i]["sourceDescription"]
-            # Dislikes
-            try:
-                result["Dislikes"] = votes[i]["downVotes"]
+            result["Dislikes"] = votes[i]["downVotes"]
 
-            except:
-                result["Dislikes"] = -1
+        except:
+            result["Dislikes"] = -1
 
-            # Favorites
-            result["Favorites"] = details[i]["favoritedCount"]
-            # HasVipServers
-            result["HasVipServers"] = details[i]["createVipServersAllowed"]
-            # IsPlayable
-            result["isPlayable"] = root_details[i]["isPlayable"]
-            # LastUpdated
-            result["LastUpdated"] = details[i]["updated"]
-            # LikeRatio
-            try:
-                result["LikeRatio"] = votes[i]["upVotes"] / (votes[i]["upVotes"] + votes[i]["downVotes"])
-            except:
-                result["LikeRatio"] = -1
-            # Likes
-            try:
-                result["Likes"] = votes[i]["upVotes"]
-            except:
-                result["Likes"] = -1
-            # MaxPlayers
-            result["MaxPlayers"] = details[i]["maxPlayers"]
-            # Price
-            try:
-                result["Price"] = int(details[i]["price"])
-            except:
-                result["Price"] = 0
-            
-            # RootPlaceID
-            result["RootPlaceID"] = details[i]["rootPlaceId"]
-            # Title
-            result["Title"] = details[i]["sourceName"]
-            # Uncopylocked
-            result["Uncopylocked"] = details[i]["copyingAllowed"]
-            # Visits
-            result["Visits"] = details[i]["visits"]
+        # Favorites
+        result["Favorites"] = details[i]["favoritedCount"]
+        # HasVipServers
+        result["HasVipServers"] = details[i]["createVipServersAllowed"]
+        # IsPlayable
+        result["isPlayable"] = root_details[i]["isPlayable"]
+        # LastUpdated
+        result["LastUpdated"] = details[i]["updated"]
+        # LikeRatio
+        try:
+            result["LikeRatio"] = votes[i]["upVotes"] / (votes[i]["upVotes"] + votes[i]["downVotes"])
+        except:
+            result["LikeRatio"] = -1
+        # Likes
+        try:
+            result["Likes"] = votes[i]["upVotes"]
+        except:
+            result["Likes"] = -1
+        # MaxPlayers
+        result["MaxPlayers"] = details[i]["maxPlayers"]
+        # Price
+        try:
+            result["Price"] = int(details[i]["price"])
+        except:
+            result["Price"] = 0
+        
+        # RootPlaceID
+        result["RootPlaceID"] = details[i]["rootPlaceId"]
+        # Title
+        result["Title"] = details[i]["sourceName"]
+        # Uncopylocked
+        result["Uncopylocked"] = details[i]["copyingAllowed"]
+        # Visits
+        result["Visits"] = details[i]["visits"]
 
-            #result["AgeRating"] = age_rating[i]
-            #result["VoiceEnabled"] = voice_enabled[i]
-            result["HasCustomIcon"] = is_custom_icon[i]
+        #result["AgeRating"] = age_rating[i]
+        #result["VoiceEnabled"] = voice_enabled[i]
+        result["HasCustomIcon"] = is_custom_icon[i]
 
-            final_result = final_result + [result]
-        except BaseException as e:
-            print(e)
+        final_result = final_result + [result]
+        #except BaseException as e:
+         #   print(e)
     return final_result
 
 def getUserFavorites(userID):
