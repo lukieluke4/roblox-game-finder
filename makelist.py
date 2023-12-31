@@ -63,7 +63,8 @@ while True:
         print(player_list)
         while len(games) < MAX_GAMES_TOTAL:
             try:
-                print("batch game count:", len(games))
+                print("currently looking at:")
+                print(len(games))
                 current_plr = player_list[random.randrange(0, len(player_list))]
                 current_favs = robloxapi.getUserFavorites(current_plr)
 
@@ -75,20 +76,21 @@ while True:
                 games = games + current_favs + robloxapi.getUserCreated(current_plr)
 
             except BaseException as e:
-                time.sleep(1)
+                print("probably timed out")
+                print(e)
+                time.sleep(3)
             
-        while len(games) > 0:
-            games = list(set(games))
-            for i in range(len(games)//MAX_GAMES_BATCH + 1):
-                print(i, " / ", (len(games) // MAX_GAMES_BATCH) + 1, "games searching")
-                partial_games = games[MAX_GAMES_BATCH * i: MAX_GAMES_BATCH * i + MAX_GAMES_BATCH]
-                count = count + 1
-            
-                gameData = robloxapi.multiUniverseToList(partial_games)
-                if gameData == -1: continue # if game is unplayable, don't add it to the list
+        games = list(set(games))
+        for i in range(len(games)//MAX_GAMES_BATCH + 1):
+            print(i, " / ", (len(games) // MAX_GAMES_BATCH) + 1, "games searching")
+            partial_games = games[MAX_GAMES_BATCH * i: MAX_GAMES_BATCH * i + MAX_GAMES_BATCH]
+            count = count + 1
+        
+            gameData = robloxapi.multiUniverseToList(partial_games)
+            if gameData == -1: continue # if game is unplayable, don't add it to the list
 
-                df2 = pd.DataFrame(gameData, columns=df.columns)
-                df = pd.concat([df, df2])
+            df2 = pd.DataFrame(gameData, columns=df.columns)
+            df = pd.concat([df, df2])
 
         games = []
 
@@ -111,6 +113,7 @@ while True:
         last_time = time.time()
 
         print("\n---------")
+            
     except BaseException as e:
         print("frick")
         print(e)
